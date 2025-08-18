@@ -1,7 +1,7 @@
 // frontend/src/components/CorrelationInsights.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Brain, Lightbulb, Filter, Calendar, Activity, Zap, Heart, Moon } from 'lucide-react';
+import { TrendingUp, Brain, Lightbulb, Filter, Activity, Zap, Heart, Moon } from 'lucide-react';
 
 const CorrelationInsights = ({ correlations, healthData }) => {
   const [selectedCorrelation, setSelectedCorrelation] = useState(null);
@@ -9,24 +9,23 @@ const CorrelationInsights = ({ correlations, healthData }) => {
   const [insights, setInsights] = useState([]);
   const [timeRange, setTimeRange] = useState('30d');
 
-  useEffect(() => {
-    if (correlations.length > 0) {
-      setSelectedCorrelation(correlations[0]);
-      generateInsights();
+  // Memoize filterDataByTimeRange to fix dependency warning
+  const filterDataByTimeRange = useCallback(() => {
+    if (!healthData || healthData.length === 0) {
+      setFilteredData([]);
+      return;
     }
-    filterDataByTimeRange();
-  }, [correlations, healthData, timeRange]);
 
-  const filterDataByTimeRange = () => {
     const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     
     const filtered = healthData.filter(d => new Date(d.date) >= cutoff);
     setFilteredData(filtered);
-  };
+  }, [healthData, timeRange]);
 
-  const generateInsights = () => {
+  // Memoize generateInsights to avoid recreating on every render
+  const generateInsights = useCallback(() => {
     const mockInsights = [
       {
         id: 1,
@@ -70,35 +69,48 @@ const CorrelationInsights = ({ correlations, healthData }) => {
       }
     ];
     setInsights(mockInsights);
-  };
+  }, []);
 
-  const getCorrelationStrength = (value) => {
+  // Fixed useEffect with proper dependencies
+  useEffect(() => {
+    if (correlations.length > 0 && !selectedCorrelation) {
+      setSelectedCorrelation(correlations[0]);
+    }
+    generateInsights();
+    filterDataByTimeRange();
+  }, [correlations, selectedCorrelation, generateInsights, filterDataByTimeRange]);
+
+  // Memoize utility functions
+  const getCorrelationStrength = useCallback((value) => {
     const abs = Math.abs(value);
     if (abs >= 0.7) return 'Strong';
     if (abs >= 0.5) return 'Moderate';
     if (abs >= 0.3) return 'Weak';
     return 'Very Weak';
-  };
+  }, []);
 
-  const getCorrelationColor = (value) => {
+  const getCorrelationColor = useCallback((value) => {
     const abs = Math.abs(value);
     if (abs >= 0.7) return value > 0 ? 'text-green-600' : 'text-red-600';
     if (abs >= 0.5) return value > 0 ? 'text-blue-600' : 'text-orange-600';
     return 'text-gray-600';
-  };
+  }, []);
 
-  const generateScatterData = () => {
+  // Memoize scatter chart data generation
+  const scatterData = useMemo(() => {
     return filteredData.map((d, index) => ({
-      x: d.sleep,
-      y: d.energy,
+      x: d.sleep || 0,
+      y: d.energy || 0,
       name: d.date,
-      mood: d.mood,
-      steps: d.steps
+      mood: d.mood || 0,
+      steps: d.steps || 0,
+      key: `${d.date}-${index}` // Add unique key
     }));
-  };
+  }, [filteredData]);
 
-  const InsightCard = ({ insight }) => {
-    const { type, title, correlation, description, actionable, impact, confidence } = insight;
+  // Memoized InsightCard component
+  const InsightCard = useCallback(({ insight }) => {
+    const { correlation, description, actionable, impact, confidence, title } = insight;
     
     const getTypeIcon = () => {
       if (Math.abs(correlation) >= 0.7) return <TrendingUp className="w-5 h-5" />;
@@ -152,9 +164,10 @@ const CorrelationInsights = ({ correlations, healthData }) => {
         </div>
       </div>
     );
-  };
+  }, [getCorrelationColor, getCorrelationStrength]);
 
-  const MetricIcon = ({ metric }) => {
+  // Memoized MetricIcon component
+  const MetricIcon = useCallback(({ metric }) => {
     const icons = {
       sleep: Moon,
       energy: Zap,
@@ -163,7 +176,53 @@ const CorrelationInsights = ({ correlations, healthData }) => {
     };
     const Icon = icons[metric] || Activity;
     return <Icon className="w-4 h-4" />;
-  };
+  }, []);
+
+  // Memoized custom tooltip component
+  const CustomTooltip = useCallback(({ active, payload }) => {
+    if (active && payload && payload[0]) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-3 shadow-lg rounded-lg border">
+          <p className="font-semibold">{data.name}</p>
+          <p>Sleep: {data.x}h</p>
+          <p>Energy: {data.y}/10</p>
+          <p>Mood: {data.mood}/10</p>
+          <p>Steps: {data.steps?.toLocaleString()}</p>
+        </div>
+      );
+    }
+    return null;
+  }, []);
+
+  // Handle time range change
+  const handleTimeRangeChange = useCallback((e) => {
+    setTimeRange(e.target.value);
+  }, []);
+
+  // Memoize statistics data
+  const statisticsData = useMemo(() => {
+    if (filteredData.length === 0) {
+      return [
+        { metric: 'sleep', value: 0, change: '0%', label: 'Avg Sleep' },
+        { metric: 'energy', value: 0, change: '0%', label: 'Avg Energy' },
+        { metric: 'mood', value: 0, change: '0%', label: 'Avg Mood' },
+        { metric: 'steps', value: '0', change: '0%', label: 'Avg Steps' }
+      ];
+    }
+
+    const avgSleep = (filteredData.reduce((sum, d) => sum + (d.sleep || 0), 0) / filteredData.length).toFixed(1);
+    const avgEnergy = (filteredData.reduce((sum, d) => sum + (d.energy || 0), 0) / filteredData.length).toFixed(1);
+    const avgMood = (filteredData.reduce((sum, d) => sum + (d.mood || 0), 0) / filteredData.length).toFixed(1);
+    const avgSteps = Math.round(filteredData.reduce((sum, d) => sum + (d.steps || 0), 0) / filteredData.length / 1000 * 10) / 10;
+
+    return [
+      { metric: 'sleep', value: avgSleep, change: '+5%', label: 'Avg Sleep' },
+      { metric: 'energy', value: avgEnergy, change: '-2%', label: 'Avg Energy' },
+      { metric: 'mood', value: avgMood, change: '+8%', label: 'Avg Mood' },
+      { metric: 'steps', value: `${avgSteps}K`, change: '+12%', label: 'Avg Steps' }
+    ];
+  }, [filteredData]);
 
   return (
     <div className="space-y-8">
@@ -182,8 +241,8 @@ const CorrelationInsights = ({ correlations, healthData }) => {
               <label className="text-sm font-medium text-gray-700">Time Range:</label>
               <select 
                 value={timeRange} 
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1 text-sm"
+                onChange={handleTimeRangeChange}
+                className="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -214,7 +273,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
         </div>
         
         <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart data={generateScatterData()}>
+          <ScatterChart data={scatterData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               type="number" 
@@ -230,21 +289,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
             />
             <Tooltip 
               cursor={{ strokeDasharray: '3 3' }}
-              content={({ active, payload }) => {
-                if (active && payload && payload[0]) {
-                  const data = payload[0].payload;
-                  return (
-                    <div className="bg-white p-3 shadow-lg rounded-lg border">
-                      <p className="font-semibold">{data.name}</p>
-                      <p>Sleep: {data.x}h</p>
-                      <p>Energy: {data.y}/10</p>
-                      <p>Mood: {data.mood}/10</p>
-                      <p>Steps: {data.steps?.toLocaleString()}</p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
+              content={CustomTooltip}
             />
             <Scatter 
               dataKey="y" 
@@ -273,6 +318,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
               stroke="#8B5CF6" 
               strokeWidth={2}
               name="Sleep (hours)"
+              connectNulls={false}
             />
             <Line 
               type="monotone" 
@@ -280,6 +326,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
               stroke="#10B981" 
               strokeWidth={2}
               name="Energy (/10)"
+              connectNulls={false}
             />
             <Line 
               type="monotone" 
@@ -287,6 +334,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
               stroke="#F59E0B" 
               strokeWidth={2}
               name="Mood (/10)"
+              connectNulls={false}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -294,12 +342,7 @@ const CorrelationInsights = ({ correlations, healthData }) => {
 
       {/* Statistical Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { metric: 'sleep', value: 7.2, change: '+5%', label: 'Avg Sleep' },
-          { metric: 'energy', value: 6.8, change: '-2%', label: 'Avg Energy' },
-          { metric: 'mood', value: 7.5, change: '+8%', label: 'Avg Mood' },
-          { metric: 'steps', value: '9.2K', change: '+12%', label: 'Avg Steps' }
-        ].map(({ metric, value, change, label }) => (
+        {statisticsData.map(({ metric, value, change, label }) => (
           <div key={metric} className="bg-white rounded-lg p-4 shadow border border-gray-100">
             <div className="flex items-center justify-between mb-2">
               <MetricIcon metric={metric} />

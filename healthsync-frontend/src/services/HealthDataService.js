@@ -1,5 +1,5 @@
 // frontend/src/services/healthDataService.js
-import { apiService } from './apiService';
+import apiService from './apiService';
 
 class HealthDataService {
   constructor() {

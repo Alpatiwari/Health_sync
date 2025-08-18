@@ -1,5 +1,5 @@
 // frontend/src/context/HealthDataContext.js
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { healthDataService } from '../services/HealthDataService';
 import { useAuth } from './AuthContext';
 
@@ -88,27 +88,8 @@ export const HealthDataProvider = ({ children }) => {
   const [state, dispatch] = useReducer(healthDataReducer, initialState);
   const { user, isAuthenticated } = useAuth();
 
-  // Fetch health data when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchHealthData();
-    } else {
-      dispatch({ type: 'CLEAR_DATA' });
-    }
-  }, [isAuthenticated, user]);
-
-  // Auto-refresh data every 5 minutes
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-
-    const interval = setInterval(() => {
-      fetchHealthData(false); // Silent refresh
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, user]);
-
-  const fetchHealthData = async (showLoading = true) => {
+  // Memoized fetchHealthData function to prevent unnecessary re-renders
+  const fetchHealthData = useCallback(async (showLoading = true) => {
     if (!user) return;
 
     try {
@@ -142,9 +123,29 @@ export const HealthDataProvider = ({ children }) => {
       });
       throw error;
     }
-  };
+  }, [user, state.dateRange.start, state.dateRange.end, state.filters.metrics, state.filters.aggregation]);
 
-  const addDataPoint = async (dataPoint) => {
+  // Fetch health data when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchHealthData();
+    } else {
+      dispatch({ type: 'CLEAR_DATA' });
+    }
+  }, [isAuthenticated, user, fetchHealthData]);
+
+  // Auto-refresh data every 5 minutes
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const interval = setInterval(() => {
+      fetchHealthData(false); // Silent refresh
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, fetchHealthData]);
+
+  const addDataPoint = useCallback(async (dataPoint) => {
     if (!user) return;
 
     try {
@@ -162,9 +163,9 @@ export const HealthDataProvider = ({ children }) => {
       await fetchHealthData(false);
       throw error;
     }
-  };
+  }, [user, fetchHealthData]);
 
-  const updateDataPoint = async (date, updates) => {
+  const updateDataPoint = useCallback(async (date, updates) => {
     if (!user) return;
 
     try {
@@ -184,9 +185,9 @@ export const HealthDataProvider = ({ children }) => {
       await fetchHealthData(false);
       throw error;
     }
-  };
+  }, [user, fetchHealthData]);
 
-  const removeDataPoint = async (date) => {
+  const removeDataPoint = useCallback(async (date) => {
     if (!user) return;
 
     try {
@@ -204,23 +205,23 @@ export const HealthDataProvider = ({ children }) => {
       await fetchHealthData(false);
       throw error;
     }
-  };
+  }, [user, fetchHealthData]);
 
-  const setDateRange = (startDate, endDate) => {
+  const setDateRange = useCallback((startDate, endDate) => {
     dispatch({
       type: 'SET_DATE_RANGE',
       payload: { start: startDate, end: endDate }
     });
-  };
+  }, []);
 
-  const setFilters = (filters) => {
+  const setFilters = useCallback((filters) => {
     dispatch({
       type: 'SET_FILTERS',
       payload: filters
     });
-  };
+  }, []);
 
-  const getMetricTrend = async (metric, days = 30) => {
+  const getMetricTrend = useCallback(async (metric, days = 30) => {
     if (!user) return null;
 
     try {
@@ -229,9 +230,9 @@ export const HealthDataProvider = ({ children }) => {
       console.error('Failed to get metric trend:', error);
       return null;
     }
-  };
+  }, [user]);
 
-  const getHealthScore = async (date = null) => {
+  const getHealthScore = useCallback(async (date = null) => {
     if (!user) return null;
 
     try {
@@ -240,13 +241,13 @@ export const HealthDataProvider = ({ children }) => {
       console.error('Failed to get health score:', error);
       return null;
     }
-  };
+  }, [user]);
 
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     return fetchHealthData(true);
-  };
+  }, [fetchHealthData]);
 
-  // Derived state
+  // Derived state - using useMemo for expensive computations if needed
   const latestDataPoint = state.data.length > 0 ? state.data[state.data.length - 1] : null;
   const hasData = state.data.length > 0;
   const isStale = state.lastUpdated && (Date.now() - state.lastUpdated) > 10 * 60 * 1000; // 10 minutes

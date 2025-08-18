@@ -1,5 +1,5 @@
 // frontend/src/components/Dashboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Activity, Brain, Zap, AlertTriangle, TrendingUp, Calendar, Heart, Lightbulb, ArrowUp, ArrowDown } from 'lucide-react';
 
@@ -7,12 +7,8 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
   const [liveInsights, setLiveInsights] = useState([]);
   const [healthScore, setHealthScore] = useState(0);
 
-  useEffect(() => {
-    calculateHealthScore();
-    generateLiveInsights();
-  }, [healthData, predictions]);
-
-  const calculateHealthScore = () => {
+  // Memoized function to calculate health score
+  const calculateHealthScore = useCallback(() => {
     if (!healthData.length) return;
     
     const latest = healthData[healthData.length - 1];
@@ -23,12 +19,12 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
       (latest.mood / 10 * 25)
     ));
     setHealthScore(Math.round(score));
-  };
+  }, [healthData]);
 
-  const generateLiveInsights = () => {
+  // Memoized function to generate live insights
+  const generateLiveInsights = useCallback(() => {
     const insights = [
       {
-        type: 'prediction',
         icon: Brain,
         title: 'Energy Forecast',
         message: `73% chance of energy dip at 2:30 PM based on your sleep pattern`,
@@ -37,7 +33,6 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
         time: '2 hours'
       },
       {
-        type: 'correlation',
         icon: TrendingUp,
         title: 'Pattern Detected',
         message: 'Your mood improves 40% on days with 10k+ steps',
@@ -46,7 +41,6 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
         time: 'now'
       },
       {
-        type: 'optimization',
         icon: Lightbulb,
         title: 'Micro-Moment',
         message: 'Prime time for focused work based on your energy curve',
@@ -56,7 +50,13 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
       }
     ];
     setLiveInsights(insights);
-  };
+  }, []);
+
+  // Include both functions in the dependency array
+  useEffect(() => {
+    calculateHealthScore();
+    generateLiveInsights();
+  }, [healthData, predictions, calculateHealthScore, generateLiveInsights]);
 
   const MetricCard = ({ title, value, unit, trend, icon: Icon, color, prediction }) => (
     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
@@ -87,7 +87,7 @@ const Dashboard = ({ healthData, predictions, correlations, user }) => {
   );
 
   const InsightCard = ({ insight }) => {
-    const { type, icon: Icon, title, message, action, priority, time } = insight;
+    const { icon: Icon, title, message, action, priority, time } = insight;
     const priorityColors = {
       high: 'border-red-200 bg-red-50',
       medium: 'border-yellow-200 bg-yellow-50',

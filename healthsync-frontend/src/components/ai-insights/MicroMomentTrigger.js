@@ -1,6 +1,6 @@
 // frontend/src/components/MicroMomentTrigger.js
-import React, { useState, useEffect } from 'react';
-import { Zap, Clock, Brain, Target, Play, Pause, RotateCcw, CheckCircle, AlertCircle, Lightbulb, Activity, Heart, Coffee, Moon } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Zap, Clock, Brain, Target, Play, Pause, CheckCircle, AlertCircle, Lightbulb, Activity, Heart, Coffee } from 'lucide-react';
 
 const MicroMomentTrigger = ({ user, healthData }) => {
   const [currentMoment, setCurrentMoment] = useState(null);
@@ -15,37 +15,7 @@ const MicroMomentTrigger = ({ user, healthData }) => {
     energyLevel: 6
   });
 
-  useEffect(() => {
-    generateUpcomingMoments();
-    
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      updateLiveMetrics();
-      checkForTriggers();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [healthData]);
-
-  useEffect(() => {
-    let interval = null;
-    if (isActive && currentMoment) {
-      interval = setInterval(() => {
-        setTimer(timer => {
-          if (timer >= currentMoment.duration - 1) {
-            completeMoment();
-            return 0;
-          }
-          return timer + 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, currentMoment]);
-
-  const generateUpcomingMoments = () => {
+  const generateUpcomingMoments = useCallback(() => {
     const moments = [
       {
         id: 1,
@@ -125,27 +95,31 @@ const MicroMomentTrigger = ({ user, healthData }) => {
       }
     ];
     setUpcomingMoments(moments);
-  };
+  }, []);
 
-  const updateLiveMetrics = () => {
+  const updateLiveMetrics = useCallback(() => {
     setLiveMetrics(prev => ({
       heartRate: Math.max(60, Math.min(100, prev.heartRate + (Math.random() - 0.5) * 4)),
       stressLevel: Math.max(1, Math.min(10, prev.stressLevel + (Math.random() - 0.5) * 0.5)),
       focusScore: Math.max(1, Math.min(10, prev.focusScore + (Math.random() - 0.5) * 0.3)),
       energyLevel: Math.max(1, Math.min(10, prev.energyLevel + (Math.random() - 0.5) * 0.2))
     }));
-  };
+  }, []);
 
-  const checkForTriggers = () => {
-    // Simulate trigger conditions
-    if (liveMetrics.stressLevel > 7 && !currentMoment) {
-      triggerMoment(upcomingMoments.find(m => m.type === 'stress_relief'));
-    } else if (liveMetrics.energyLevel < 4 && !currentMoment) {
-      triggerMoment(upcomingMoments.find(m => m.type === 'energy_boost'));
+  const completeMoment = useCallback(() => {
+    if (currentMoment) {
+      setCompletedMoments(prev => [...prev, {
+        ...currentMoment,
+        completedAt: new Date(),
+        actualDuration: timer
+      }]);
     }
-  };
+    setCurrentMoment(null);
+    setIsActive(false);
+    setTimer(0);
+  }, [currentMoment, timer]);
 
-  const triggerMoment = (moment) => {
+  const triggerMoment = useCallback((moment) => {
     if (moment && !isActive) {
       setCurrentMoment(moment);
       // Auto-start after 3 seconds unless user intervenes
@@ -155,7 +129,46 @@ const MicroMomentTrigger = ({ user, healthData }) => {
         }
       }, 3000);
     }
-  };
+  }, [isActive, currentMoment]);
+
+  const checkForTriggers = useCallback(() => {
+    // Simulate trigger conditions
+    if (liveMetrics.stressLevel > 7 && !currentMoment) {
+      triggerMoment(upcomingMoments.find(m => m.type === 'stress_relief'));
+    } else if (liveMetrics.energyLevel < 4 && !currentMoment) {
+      triggerMoment(upcomingMoments.find(m => m.type === 'energy_boost'));
+    }
+  }, [liveMetrics.stressLevel, liveMetrics.energyLevel, currentMoment, upcomingMoments, triggerMoment]);
+
+  useEffect(() => {
+    generateUpcomingMoments();
+    
+    // Simulate real-time updates
+    const interval = setInterval(() => {
+      updateLiveMetrics();
+      checkForTriggers();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [healthData, generateUpcomingMoments, updateLiveMetrics, checkForTriggers]);
+
+  useEffect(() => {
+    let interval = null;
+    if (isActive && currentMoment) {
+      interval = setInterval(() => {
+        setTimer(timer => {
+          if (timer >= currentMoment.duration - 1) {
+            completeMoment();
+            return 0;
+          }
+          return timer + 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, currentMoment, completeMoment]);
 
   const startMoment = (moment) => {
     setCurrentMoment(moment);
@@ -169,19 +182,6 @@ const MicroMomentTrigger = ({ user, healthData }) => {
 
   const resumeMoment = () => {
     setIsActive(true);
-  };
-
-  const completeMoment = () => {
-    if (currentMoment) {
-      setCompletedMoments(prev => [...prev, {
-        ...currentMoment,
-        completedAt: new Date(),
-        actualDuration: timer
-      }]);
-    }
-    setCurrentMoment(null);
-    setIsActive(false);
-    setTimer(0);
   };
 
   const skipMoment = () => {
@@ -315,7 +315,7 @@ const MicroMomentTrigger = ({ user, healthData }) => {
     );
   };
 
-  const MetricCard = ({ label, value, unit, icon: Icon, color, status }) => (
+  const MetricCard = ({ label, value, icon: Icon, color, status }) => (
     <div className="bg-white rounded-lg p-4 border border-gray-200">
       <div className="flex items-center justify-between mb-2">
         <div className={`p-1 rounded ${color}`}>
@@ -347,7 +347,6 @@ const MicroMomentTrigger = ({ user, healthData }) => {
         <MetricCard
           label="Heart Rate"
           value={Math.round(liveMetrics.heartRate)}
-          unit="bpm"
           icon={Heart}
           color="bg-red-500"
           status={liveMetrics.heartRate > 80 ? 'warning' : 'good'}
@@ -355,7 +354,6 @@ const MicroMomentTrigger = ({ user, healthData }) => {
         <MetricCard
           label="Stress Level"
           value={liveMetrics.stressLevel.toFixed(1)}
-          unit="/10"
           icon={AlertCircle}
           color="bg-orange-500"
           status={liveMetrics.stressLevel > 7 ? 'alert' : liveMetrics.stressLevel > 5 ? 'warning' : 'good'}
@@ -363,7 +361,6 @@ const MicroMomentTrigger = ({ user, healthData }) => {
         <MetricCard
           label="Focus Score"
           value={liveMetrics.focusScore.toFixed(1)}
-          unit="/10"
           icon={Target}
           color="bg-purple-500"
           status={liveMetrics.focusScore > 7 ? 'good' : 'warning'}
@@ -371,7 +368,6 @@ const MicroMomentTrigger = ({ user, healthData }) => {
         <MetricCard
           label="Energy Level"
           value={liveMetrics.energyLevel.toFixed(1)}
-          unit="/10"
           icon={Zap}
           color="bg-yellow-500"
           status={liveMetrics.energyLevel > 6 ? 'good' : liveMetrics.energyLevel > 4 ? 'warning' : 'alert'}

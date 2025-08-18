@@ -1,7 +1,7 @@
 // frontend/src/components/PredictiveAnalysis.js
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
-import { Brain, TrendingUp, AlertTriangle, Target, Calendar, Clock, Zap, Activity, Heart, Moon, Thermometer } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Line } from 'recharts';
+import { Brain, TrendingUp, AlertTriangle, Target, Clock, Zap, Activity, Heart, Moon } from 'lucide-react';
 
 const PredictiveAnalysis = ({ predictions, healthData, user }) => {
   const [selectedMetric, setSelectedMetric] = useState('energy');
@@ -10,17 +10,63 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
   const [alerts, setAlerts] = useState([]);
   const [accuracy, setAccuracy] = useState({});
 
-  useEffect(() => {
-    generatePredictions();
-    generateAlerts();
-    calculateAccuracy();
-  }, [selectedMetric, timeHorizon, healthData]);
+  const getBaseValue = useCallback((metric) => {
+    const latest = healthData[healthData.length - 1];
+    if (!latest) return 5;
+    
+    switch(metric) {
+      case 'energy': return latest.energy || 6;
+      case 'mood': return latest.mood || 7;
+      case 'sleep': return 7.5;
+      case 'activity': return latest.steps / 1000 || 8;
+      default: return 5;
+    }
+  }, [healthData]);
 
-  const generatePredictions = () => {
+  const getCurrentValue = useCallback((metric) => {
+    const latest = healthData[healthData.length - 1];
+    if (!latest) return 5;
+    
+    switch(metric) {
+      case 'energy': return latest.energy || 6;
+      case 'mood': return latest.mood || 7;
+      case 'sleep': return latest.sleep || 7;
+      case 'activity': return latest.steps / 1000 || 8;
+      default: return 5;
+    }
+  }, [healthData]);
+
+  const getMaxValue = useCallback((metric) => {
+    switch(metric) {
+      case 'energy': return 10;
+      case 'mood': return 10;
+      case 'sleep': return 12;
+      case 'activity': return 20;
+      default: return 10;
+    }
+  }, []);
+
+  const getTrendFactor = useCallback((index, horizon) => {
+    if (selectedMetric === 'energy') {
+      if (horizon === '24h') {
+        // Energy dips in afternoon, peaks in morning
+        const hour = index;
+        if (hour >= 6 && hour <= 10) return 1.5; // Morning peak
+        if (hour >= 14 && hour <= 16) return -2; // Afternoon dip
+        if (hour >= 20) return -1; // Evening decline
+        return 0;
+      }
+    }
+    
+    // General slight decline over time with some variation
+    return Math.sin(index * 0.5) * 0.8 - index * 0.05;
+  }, [selectedMetric]);
+
+  const generatePredictions = useCallback(() => {
     const now = new Date();
     const predictions = [];
     
-    // Generate 24-hour predictions
+    // Generate predictions based on time horizon
     for (let i = 0; i < (timeHorizon === '24h' ? 24 : timeHorizon === '7d' ? 7 : 30); i++) {
       const futureTime = new Date(now);
       
@@ -48,66 +94,13 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
     }
     
     setPredictionData(predictions);
-  };
+  }, [selectedMetric, timeHorizon, getBaseValue, getTrendFactor, getMaxValue, getCurrentValue]);
 
-  const getBaseValue = (metric) => {
-    const latest = healthData[healthData.length - 1];
-    if (!latest) return 5;
-    
-    switch(metric) {
-      case 'energy': return latest.energy || 6;
-      case 'mood': return latest.mood || 7;
-      case 'sleep': return 7.5;
-      case 'activity': return latest.steps / 1000 || 8;
-      default: return 5;
-    }
-  };
-
-  const getCurrentValue = (metric) => {
-    const latest = healthData[healthData.length - 1];
-    if (!latest) return 5;
-    
-    switch(metric) {
-      case 'energy': return latest.energy || 6;
-      case 'mood': return latest.mood || 7;
-      case 'sleep': return latest.sleep || 7;
-      case 'activity': return latest.steps / 1000 || 8;
-      default: return 5;
-    }
-  };
-
-  const getMaxValue = (metric) => {
-    switch(metric) {
-      case 'energy': return 10;
-      case 'mood': return 10;
-      case 'sleep': return 12;
-      case 'activity': return 20;
-      default: return 10;
-    }
-  };
-
-  const getTrendFactor = (index, horizon) => {
-    if (selectedMetric === 'energy') {
-      if (horizon === '24h') {
-        // Energy dips in afternoon, peaks in morning
-        const hour = index;
-        if (hour >= 6 && hour <= 10) return 1.5; // Morning peak
-        if (hour >= 14 && hour <= 16) return -2; // Afternoon dip
-        if (hour >= 20) return -1; // Evening decline
-        return 0;
-      }
-    }
-    
-    // General slight decline over time with some variation
-    return Math.sin(index * 0.5) * 0.8 - index * 0.05;
-  };
-
-  const generateAlerts = () => {
+  const generateAlerts = useCallback(() => {
     const mockAlerts = [
       {
         id: 1,
         type: 'warning',
-        metric: 'energy',
         title: 'Energy Dip Predicted',
         message: 'Your energy is likely to drop to 4/10 around 2:30 PM today',
         time: '2:30 PM',
@@ -118,7 +111,6 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
       {
         id: 2,
         type: 'opportunity',
-        metric: 'focus',
         title: 'Peak Performance Window',
         message: 'Optimal focus window predicted between 9-11 AM',
         time: '9:00 AM',
@@ -129,7 +121,6 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
       {
         id: 3,
         type: 'caution',
-        metric: 'sleep',
         title: 'Sleep Quality Risk',
         message: 'Based on your stress levels, sleep quality may be compromised tonight',
         time: 'Tonight',
@@ -140,7 +131,6 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
       {
         id: 4,
         type: 'positive',
-        metric: 'mood',
         title: 'Mood Boost Expected',
         message: 'Your mood is predicted to improve significantly this evening',
         time: '6:00 PM',
@@ -150,9 +140,9 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
       }
     ];
     setAlerts(mockAlerts);
-  };
+  }, []);
 
-  const calculateAccuracy = () => {
+  const calculateAccuracy = useCallback(() => {
     // Mock accuracy data based on historical performance
     setAccuracy({
       energy: 82,
@@ -161,10 +151,16 @@ const PredictiveAnalysis = ({ predictions, healthData, user }) => {
       activity: 79,
       overall: 81
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    generatePredictions();
+    generateAlerts();
+    calculateAccuracy();
+  }, [selectedMetric, timeHorizon, healthData, generatePredictions, generateAlerts, calculateAccuracy]);
 
   const AlertCard = ({ alert }) => {
-    const { type, metric, title, message, time, probability, suggestion, priority } = alert;
+    const { type, title, message, time, probability, suggestion, priority } = alert;
     
     const getTypeColor = () => {
       switch(type) {

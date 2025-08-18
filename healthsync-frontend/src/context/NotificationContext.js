@@ -1,5 +1,5 @@
 // frontend/src/context/NotificationContext.js
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { apiService } from '../services/apiService';
 import { useAuth } from './AuthContext';
 
@@ -65,27 +65,8 @@ export const NotificationProvider = ({ children }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
   const { user, isAuthenticated } = useAuth();
 
-  // Load notifications when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      loadNotifications();
-    } else {
-      dispatch({ type: 'CLEAR_NOTIFICATIONS' });
-    }
-  }, [isAuthenticated, user]);
-
-  // Set up periodic notification checks
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-
-    const interval = setInterval(() => {
-      loadNotifications();
-    }, 30 * 1000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated, user]);
-
-  const loadNotifications = async () => {
+  // Memoize loadNotifications to prevent unnecessary re-renders
+  const loadNotifications = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -97,9 +78,36 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
-  };
+  }, [user]);
 
-  const addNotification = (notification) => {
+  // Load notifications when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadNotifications();
+    } else {
+      dispatch({ type: 'CLEAR_NOTIFICATIONS' });
+    }
+  }, [isAuthenticated, user, loadNotifications]);
+
+  // Set up periodic notification checks
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 30 * 1000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, loadNotifications]);
+
+  const removeNotification = useCallback((id) => {
+    dispatch({
+      type: 'REMOVE_NOTIFICATION',
+      payload: id
+    });
+  }, []);
+
+  const addNotification = useCallback((notification) => {
     const newNotification = {
       id: Date.now().toString(),
       timestamp: new Date(),
@@ -120,16 +128,9 @@ export const NotificationProvider = ({ children }) => {
     }
 
     return newNotification.id;
-  };
+  }, [removeNotification]);
 
-  const removeNotification = (id) => {
-    dispatch({
-      type: 'REMOVE_NOTIFICATION',
-      payload: id
-    });
-  };
-
-  const markAsRead = async (id) => {
+  const markAsRead = useCallback(async (id) => {
     try {
       dispatch({
         type: 'MARK_AS_READ',
@@ -142,21 +143,21 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
-  };
+  }, [user]);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     dispatch({ type: 'MARK_ALL_AS_READ' });
-  };
+  }, []);
 
-  const updateSettings = (settings) => {
+  const updateSettings = useCallback((settings) => {
     dispatch({
       type: 'SET_SETTINGS',
       payload: settings
     });
-  };
+  }, []);
 
   // Notification helpers
-  const showSuccess = (message, options = {}) => {
+  const showSuccess = useCallback((message, options = {}) => {
     return addNotification({
       type: 'toast',
       variant: 'success',
@@ -164,9 +165,9 @@ export const NotificationProvider = ({ children }) => {
       message,
       ...options
     });
-  };
+  }, [addNotification]);
 
-  const showError = (message, options = {}) => {
+  const showError = useCallback((message, options = {}) => {
     return addNotification({
       type: 'toast',
       variant: 'error',
@@ -175,9 +176,9 @@ export const NotificationProvider = ({ children }) => {
       duration: 8000, // Show errors longer
       ...options
     });
-  };
+  }, [addNotification]);
 
-  const showWarning = (message, options = {}) => {
+  const showWarning = useCallback((message, options = {}) => {
     return addNotification({
       type: 'toast',
       variant: 'warning',
@@ -185,9 +186,9 @@ export const NotificationProvider = ({ children }) => {
       message,
       ...options
     });
-  };
+  }, [addNotification]);
 
-  const showInfo = (message, options = {}) => {
+  const showInfo = useCallback((message, options = {}) => {
     return addNotification({
       type: 'toast',
       variant: 'info',
@@ -195,9 +196,9 @@ export const NotificationProvider = ({ children }) => {
       message,
       ...options
     });
-  };
+  }, [addNotification]);
 
-  const showInsight = (insight) => {
+  const showInsight = useCallback((insight) => {
     return addNotification({
       type: 'insight',
       variant: 'info',
@@ -206,9 +207,9 @@ export const NotificationProvider = ({ children }) => {
       action: insight.action,
       priority: insight.priority || 'medium'
     });
-  };
+  }, [addNotification]);
 
-  const showPredictionAlert = (prediction) => {
+  const showPredictionAlert = useCallback((prediction) => {
     return addNotification({
       type: 'prediction',
       variant: 'warning',
@@ -217,9 +218,9 @@ export const NotificationProvider = ({ children }) => {
       action: prediction.suggestion,
       priority: prediction.priority || 'high'
     });
-  };
+  }, [addNotification]);
 
-  const showMicroMoment = (moment) => {
+  const showMicroMoment = useCallback((moment) => {
     return addNotification({
       type: 'micro-moment',
       variant: 'success',
@@ -228,7 +229,7 @@ export const NotificationProvider = ({ children }) => {
       action: 'Start Now',
       data: moment
     });
-  };
+  }, [addNotification]);
 
   // Derived state
   const unreadCount = state.notifications.filter(n => !n.read).length;
@@ -240,6 +241,7 @@ export const NotificationProvider = ({ children }) => {
     unreadCount,
     recentNotifications,
     hasUnread,
+    loadNotifications,
     addNotification,
     removeNotification,
     markAsRead,

@@ -1,147 +1,131 @@
-// frontend/src/context/AuthContext.js
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { apiService } from '../services/apiService';
+// AuthContext.js - Fixed version with proper exports
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
-const AuthContext = createContext();
+// Create the AuthContext
+export const AuthContext = createContext();
 
-const authReducer = (state, action) => {
-  switch (action.type) {
-    case 'LOGIN_START':
-      return {
-        ...state,
-        loading: true,
-        error: null
-      };
-    case 'LOGIN_SUCCESS':
-      return {
-        ...state,
-        loading: false,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        error: null
-      };
-    case 'LOGIN_FAILURE':
-      return {
-        ...state,
-        loading: false,
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        error: action.payload
-      };
-    case 'LOGOUT':
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        loading: false,
-        error: null
-      };
-    case 'UPDATE_USER':
-      return {
-        ...state,
-        user: { ...state.user, ...action.payload }
-      };
-    case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null
-      };
-    default:
-      return state;
-  }
-};
-
-const initialState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  loading: false,
-  error: null
-};
-
+// AuthProvider component
 export const AuthProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for existing authentication on mount
+  // Initialize auth state
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          dispatch({ type: 'LOGIN_START' });
-          const user = await apiService.getCurrentUser();
-          dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: { user, token }
-          });
-        } catch (error) {
-          console.error('Failed to restore authentication:', error);
-          localStorage.removeItem('authToken');
-          dispatch({
-            type: 'LOGIN_FAILURE',
-            payload: 'Session expired. Please login again.'
-          });
+    const initAuth = () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('user');
+        
+        if (token && userData) {
+          setUser(JSON.parse(userData));
+          setIsAuthenticated(true);
         }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        // Clear invalid data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeAuth();
+    initAuth();
   }, []);
 
+  // Login function
   const login = async (email, password) => {
     try {
-      dispatch({ type: 'LOGIN_START' });
+      setLoading(true);
+      const response = await api.login({ email, password });
       
-      const response = await apiService.login(email, password);
-      
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: {
-          user: response,
-          token: response.token
-        }
-      });
+      setUser(response.user);
+      setIsAuthenticated(true);
       
       return response;
     } catch (error) {
-      dispatch({
-        type: 'LOGIN_FAILURE',
-        payload: error.message || 'Login failed'
-      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Register function
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      const response = await api.register(userData);
+      
+      if (response.user) {
+        setUser(response.user);
+        setIsAuthenticated(true);
+      }
+      
+      return response;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout function
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  // Update user function
+  const updateUser = (userData) => {
+    setUser(prev => ({ ...prev, ...userData }));
+    localStorage.setItem('user', JSON.stringify({ ...user, ...userData }));
+  };
+
+  // Refresh token function
+  const refreshToken = async () => {
+    try {
+      const response = await api.refreshToken();
+      if (response.user) {
+        setUser(response.user);
+        setIsAuthenticated(true);
+      }
+      return response;
+    } catch (error) {
+      // If refresh fails, logout user
+      logout();
       throw error;
     }
   };
 
-  const logout = async () => {
-    try {
-      await apiService.logout();
-    } catch (error) {
-      console.warn('Logout API call failed:', error);
-    } finally {
-      dispatch({ type: 'LOGOUT' });
-    }
+  // Check if user has specific role
+  const hasRole = (role) => {
+    return user && user.roles && user.roles.includes(role);
   };
 
-  const updateUser = (userData) => {
-    dispatch({
-      type: 'UPDATE_USER',
-      payload: userData
-    });
-  };
-
-  const clearError = () => {
-    dispatch({ type: 'CLEAR_ERROR' });
+  // Check if user has specific permission
+  const hasPermission = (permission) => {
+    return user && user.permissions && user.permissions.includes(permission);
   };
 
   const value = {
-    ...state,
+    user,
+    isAuthenticated,
+    loading,
     login,
+    register,
     logout,
     updateUser,
-    clearError
+    refreshToken,
+    hasRole,
+    hasPermission
   };
 
   return (
@@ -151,6 +135,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Custom hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -158,3 +143,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Default export for backwards compatibility
+export default AuthContext;
