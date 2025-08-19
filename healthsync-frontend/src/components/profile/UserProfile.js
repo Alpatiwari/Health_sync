@@ -3,7 +3,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../hooks/useHealthData';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
   const { healthProfile, updateHealthProfile } = useHealthData();
@@ -160,7 +159,7 @@ const UserProfile = () => {
       {isEditing ? (
         <form onSubmit={handleSubmit} className="profile-form">
           <div className="form-section">
-            <h3>Personal Information</h3>
+            <h3>👤 Personal Information</h3>
             <div className="form-row">
               <div className="form-group">
                 <label>First Name</label>
@@ -237,7 +236,7 @@ const UserProfile = () => {
           </div>
 
           <div className="form-section">
-            <h3>Physical Measurements</h3>
+            <h3>📏 Physical Measurements</h3>
             <div className="form-row">
               <div className="form-group">
                 <label>Height (cm)</label>
@@ -266,7 +265,7 @@ const UserProfile = () => {
           </div>
 
           <div className="form-section">
-            <h3>Medical Information</h3>
+            <h3>🏥 Medical Information</h3>
             <div className="form-group">
               <label>Medical Conditions (comma-separated)</label>
               <textarea
@@ -288,7 +287,7 @@ const UserProfile = () => {
           </div>
 
           <div className="form-section">
-            <h3>Emergency Contact</h3>
+            <h3>🚨 Emergency Contact</h3>
             <div className="form-row">
               <div className="form-group">
                 <label>Contact Name</label>
@@ -330,7 +329,7 @@ const UserProfile = () => {
       ) : (
         <div className="profile-display">
           <div className="info-section">
-            <h3>Health Overview</h3>
+            <h3>📊 Health Overview</h3>
             <div className="health-stats">
               {formData.height && formData.weight && (
                 <div className="stat-card">
@@ -342,20 +341,24 @@ const UserProfile = () => {
                 <h4>Activity Level</h4>
                 <p className="stat-value">{formData.activityLevel}</p>
               </div>
-              <div className="stat-card">
-                <h4>Height</h4>
-                <p className="stat-value">{formData.height} cm</p>
-              </div>
-              <div className="stat-card">
-                <h4>Weight</h4>
-                <p className="stat-value">{formData.weight} kg</p>
-              </div>
+              {formData.height && (
+                <div className="stat-card">
+                  <h4>Height</h4>
+                  <p className="stat-value">{formData.height} cm</p>
+                </div>
+              )}
+              {formData.weight && (
+                <div className="stat-card">
+                  <h4>Weight</h4>
+                  <p className="stat-value">{formData.weight} kg</p>
+                </div>
+              )}
             </div>
           </div>
 
           {formData.medicalConditions.length > 0 && (
             <div className="info-section">
-              <h3>Medical Conditions</h3>
+              <h3>🏥 Medical Conditions</h3>
               <div className="conditions-list">
                 {formData.medicalConditions.map((condition, index) => (
                   <span key={index} className="condition-tag">{condition}</span>
@@ -366,7 +369,7 @@ const UserProfile = () => {
 
           {formData.medications.length > 0 && (
             <div className="info-section">
-              <h3>Current Medications</h3>
+              <h3>💊 Current Medications</h3>
               <div className="medications-list">
                 {formData.medications.map((medication, index) => (
                   <span key={index} className="medication-tag">{medication}</span>
@@ -377,7 +380,7 @@ const UserProfile = () => {
 
           {formData.emergencyContact.name && (
             <div className="info-section">
-              <h3>Emergency Contact</h3>
+              <h3>🚨 Emergency Contact</h3>
               <div className="emergency-contact">
                 <p><strong>Name:</strong> {formData.emergencyContact.name}</p>
                 <p><strong>Phone:</strong> {formData.emergencyContact.phone}</p>

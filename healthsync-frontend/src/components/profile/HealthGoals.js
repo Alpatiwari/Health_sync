@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useHealthData } from '../../hooks/useHealthData';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-
 const HealthGoals = () => {
   const { healthGoals, updateHealthGoals, getGoalProgress } = useHealthData();
   const [goals, setGoals] = useState([]);
@@ -120,218 +119,288 @@ const HealthGoals = () => {
     return date.toLocaleDateString();
   };
 
-  if (!healthGoals) {
+  if (!healthGoals && healthGoals !== null) {
     return <LoadingSpinner />;
   }
 
   return (
     <div className="health-goals">
       <div className="goals-header">
-        <h2>Health Goals</h2>
+        <div>
+          <h2>🎯 Health Goals</h2>
+          <p>Track and achieve your personal health objectives</p>
+        </div>
         <button 
           className="add-goal-btn"
           onClick={() => setIsAddingGoal(!isAddingGoal)}
         >
-          {isAddingGoal ? 'Cancel' : '+ Add Goal'}
+          {isAddingGoal ? '❌ Cancel' : '➕ Add Goal'}
         </button>
       </div>
 
       {isAddingGoal && (
-        <form onSubmit={handleAddGoal} className="add-goal-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Category</label>
-              <select
-                value={newGoal.category}
-                onChange={(e) => setNewGoal({...newGoal, category: e.target.value})}
-                required
-              >
-                <option value="">Select Category</option>
-                {goalCategories.map(cat => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.icon} {cat.label}
-                  </option>
-                ))}
-              </select>
+        <div className="add-goal-form">
+          <h3>✨ Create New Goal</h3>
+          <form onSubmit={handleAddGoal}>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  value={newGoal.category}
+                  onChange={(e) => setNewGoal({...newGoal, category: e.target.value})}
+                  required
+                >
+                  <option value="">Select Category</option>
+                  {goalCategories.map(cat => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.icon} {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Priority</label>
+                <select
+                  value={newGoal.priority}
+                  onChange={(e) => setNewGoal({...newGoal, priority: e.target.value})}
+                  style={{ color: priorities.find(p => p.value === newGoal.priority)?.color }}
+                >
+                  {priorities.map(priority => (
+                    <option key={priority.value} value={priority.value}>
+                      {priority.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label>Priority</label>
-              <select
-                value={newGoal.priority}
-                onChange={(e) => setNewGoal({...newGoal, priority: e.target.value})}
-              >
-                {priorities.map(priority => (
-                  <option key={priority.value} value={priority.value}>
-                    {priority.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          <div className="form-group">
-            <label>Goal Title</label>
-            <input
-              type="text"
-              value={newGoal.title}
-              onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
-              placeholder="e.g., Lose 10 pounds, Walk 10,000 steps daily"
-              required
-            />
-          </div>
-
-          <div className="form-row">
             <div className="form-group">
-              <label>Target Value</label>
-              <input
-                type="number"
-                value={newGoal.target}
-                onChange={(e) => setNewGoal({...newGoal, target: e.target.value})}
-                placeholder="10"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Unit</label>
+              <label>Goal Title</label>
               <input
                 type="text"
-                value={newGoal.unit}
-                onChange={(e) => setNewGoal({...newGoal, unit: e.target.value})}
-                placeholder="pounds, steps, hours"
+                value={newGoal.title}
+                onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
+                placeholder="e.g., Lose 10 pounds, Walk 10,000 steps daily"
                 required
               />
             </div>
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Frequency</label>
-              <select
-                value={newGoal.frequency}
-                onChange={(e) => setNewGoal({...newGoal, frequency: e.target.value})}
-              >
-                {frequencies.map(freq => (
-                  <option key={freq.value} value={freq.value}>
-                    {freq.label}
-                  </option>
-                ))}
-              </select>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Target Value</label>
+                <input
+                  type="number"
+                  value={newGoal.target}
+                  onChange={(e) => setNewGoal({...newGoal, target: e.target.value})}
+                  placeholder="10"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Unit</label>
+                <input
+                  type="text"
+                  value={newGoal.unit}
+                  onChange={(e) => setNewGoal({...newGoal, unit: e.target.value})}
+                  placeholder="pounds, steps, hours"
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Deadline (Optional)</label>
-              <input
-                type="date"
-                value={newGoal.deadline}
-                onChange={(e) => setNewGoal({...newGoal, deadline: e.target.value})}
-              />
-            </div>
-          </div>
 
-          <div className="form-actions">
-            <button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Goal'}
-            </button>
-          </div>
-        </form>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Frequency</label>
+                <select
+                  value={newGoal.frequency}
+                  onChange={(e) => setNewGoal({...newGoal, frequency: e.target.value})}
+                >
+                  {frequencies.map(freq => (
+                    <option key={freq.value} value={freq.value}>
+                      {freq.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Deadline (Optional)</label>
+                <input
+                  type="date"
+                  value={newGoal.deadline}
+                  onChange={(e) => setNewGoal({...newGoal, deadline: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" disabled={loading}>
+                {loading ? '⏳ Adding...' : '🚀 Add Goal'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       <div className="goals-list">
         {goals.length === 0 ? (
           <div className="empty-state">
+            <div className="empty-icon">🎯</div>
             <h3>No goals set yet</h3>
             <p>Start by adding your first health goal to track your progress!</p>
+            <button 
+              className="empty-action-btn"
+              onClick={() => setIsAddingGoal(true)}
+            >
+              🎯 Create Your First Goal
+            </button>
           </div>
         ) : (
-          goals.map(goal => {
-            const progress = getGoalProgress ? getGoalProgress(goal.id) : goal.progress || 0;
-            const priorityColor = priorities.find(p => p.value === goal.priority)?.color;
-            
-            return (
-              <div key={goal.id} className={`goal-card ${goal.status}`}>
-                <div className="goal-header">
-                  <div className="goal-category">
-                    <span className="category-icon">{getCategoryIcon(goal.category)}</span>
-                    <span className="category-name">
-                      {goalCategories.find(cat => cat.value === goal.category)?.label}
-                    </span>
-                  </div>
-                  <div className="goal-priority" style={{ color: priorityColor }}>
-                    {goal.priority.toUpperCase()}
-                  </div>
-                </div>
-
-                <div className="goal-content">
-                  <h3 className="goal-title">{goal.title}</h3>
-                  <div className="goal-target">
-                    Target: {goal.target} {goal.unit} ({goal.frequency})
-                  </div>
-                  
-                  <div className="goal-progress">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill"
-                        style={{ 
-                          width: `${Math.min(progress, 100)}%`,
-                          backgroundColor: getProgressColor(progress)
-                        }}
-                      />
+          <div className="goals-grid">
+            {goals.map(goal => {
+              const progress = getGoalProgress ? getGoalProgress(goal.id) : goal.progress || 0;
+              const priorityColor = priorities.find(p => p.value === goal.priority)?.color;
+              
+              return (
+                <div key={goal.id} className={`goal-card ${goal.status}`}>
+                  <div className="goal-header">
+                    <div className="goal-category">
+                      <span className="category-icon">{getCategoryIcon(goal.category)}</span>
+                      <span className="category-name">
+                        {goalCategories.find(cat => cat.value === goal.category)?.label}
+                      </span>
                     </div>
-                    <span className="progress-text">{progress.toFixed(0)}% Complete</span>
+                    <div className="goal-priority" style={{ 
+                      backgroundColor: `${priorityColor}15`,
+                      color: priorityColor,
+                      border: `1px solid ${priorityColor}30`
+                    }}>
+                      {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)}
+                    </div>
                   </div>
 
-                  <div className="goal-deadline">
-                    📅 {formatDeadline(goal.deadline)}
+                  <div className="goal-content">
+                    <h3 className="goal-title">{goal.title}</h3>
+                    <div className="goal-target">
+                      🎯 Target: <strong>{goal.target} {goal.unit}</strong> ({goal.frequency})
+                    </div>
+                    
+                    <div className="goal-progress">
+                      <div className="progress-header">
+                        <span className="progress-label">Progress</span>
+                        <span className="progress-percentage">{Math.round(progress)}%</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill"
+                          style={{ 
+                            width: `${Math.min(progress, 100)}%`,
+                            backgroundColor: getProgressColor(progress)
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="goal-deadline">
+                      📅 {formatDeadline(goal.deadline)}
+                    </div>
+
+                    {goal.status === 'completed' && (
+                      <div className="completion-badge">
+                        🎉 Completed!
+                      </div>
+                    )}
+
+                    {goal.status === 'paused' && (
+                      <div className="paused-badge">
+                        ⏸️ Paused
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="goal-actions">
+                    {goal.status === 'active' && (
+                      <>
+                        <button 
+                          className="complete-btn"
+                          onClick={() => handleUpdateGoalStatus(goal.id, 'completed')}
+                          title="Mark as completed"
+                        >
+                          ✅ Complete
+                        </button>
+                        <button 
+                          className="pause-btn"
+                          onClick={() => handleUpdateGoalStatus(goal.id, 'paused')}
+                          title="Pause this goal"
+                        >
+                          ⏸️ Pause
+                        </button>
+                      </>
+                    )}
+                    
+                    {goal.status === 'paused' && (
+                      <button 
+                        className="resume-btn"
+                        onClick={() => handleUpdateGoalStatus(goal.id, 'active')}
+                        title="Resume this goal"
+                      >
+                        ▶️ Resume
+                      </button>
+                    )}
+                    
+                    {goal.status === 'completed' && (
+                      <button 
+                        className="reactivate-btn"
+                        onClick={() => handleUpdateGoalStatus(goal.id, 'active')}
+                        title="Reactivate this goal"
+                      >
+                        🔄 Reactivate
+                      </button>
+                    )}
+
+                    <button 
+                      className="delete-btn"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this goal?')) {
+                          handleDeleteGoal(goal.id);
+                        }
+                      }}
+                      title="Delete this goal"
+                    >
+                      🗑️ Delete
+                    </button>
                   </div>
                 </div>
-
-                <div className="goal-actions">
-                  {goal.status === 'active' && (
-                    <>
-                      <button 
-                        className="complete-btn"
-                        onClick={() => handleUpdateGoalStatus(goal.id, 'completed')}
-                      >
-                        ✅ Complete
-                      </button>
-                      <button 
-                        className="pause-btn"
-                        onClick={() => handleUpdateGoalStatus(goal.id, 'paused')}
-                      >
-                        ⏸️ Pause
-                      </button>
-                    </>
-                  )}
-                  
-                  {goal.status === 'paused' && (
-                    <button 
-                      className="resume-btn"
-                      onClick={() => handleUpdateGoalStatus(goal.id, 'active')}
-                    >
-                      ▶️ Resume
-                    </button>
-                  )}
-                  
-                  {goal.status === 'completed' && (
-                    <button 
-                      className="reactivate-btn"
-                      onClick={() => handleUpdateGoalStatus(goal.id, 'active')}
-                    >
-                      🔄 Reactivate
-                    </button>
-                  )}
-
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteGoal(goal.id)}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
+
+      {goals.length > 0 && (
+        <div className="goals-summary">
+          <h3>📊 Goals Summary</h3>
+          <div className="summary-stats">
+            <div className="summary-card">
+              <div className="summary-number">{goals.filter(g => g.status === 'active').length}</div>
+              <div className="summary-label">Active Goals</div>
+            </div>
+            <div className="summary-card">
+              <div className="summary-number">{goals.filter(g => g.status === 'completed').length}</div>
+              <div className="summary-label">Completed</div>
+            </div>
+            <div className="summary-card">
+              <div className="summary-number">
+                {goals.length > 0 ? Math.round((goals.filter(g => g.status === 'completed').length / goals.length) * 100) : 0}%
+              </div>
+              <div className="summary-label">Success Rate</div>
+            </div>
+            <div className="summary-card">
+              <div className="summary-number">{goals.filter(g => g.status === 'paused').length}</div>
+              <div className="summary-label">Paused</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

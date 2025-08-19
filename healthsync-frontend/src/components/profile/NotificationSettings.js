@@ -1,18 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNotifications } from '../../hooks/useNotifications';
-import LoadingSpinner from '../common/LoadingSpinner';
-import NotificationBanner from '../common/NotificationBanner';
 
-
-const NotificationSettings = () => {
-  const { 
-    notificationSettings, 
-    updateNotificationSettings, 
-    testNotification,
-    getNotificationPermission,
-    requestNotificationPermission 
-  } = useNotifications();
-  
+const NotificationSettings = ({ preferences = {}, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
   const [permissionStatus, setPermissionStatus] = useState('default');
@@ -83,41 +71,52 @@ const NotificationSettings = () => {
     }
   });
 
+  // Check browser notification permission
   const checkPermissionStatus = useCallback(async () => {
-    const permission = await getNotificationPermission();
-    setPermissionStatus(permission);
-  }, [getNotificationPermission]);
-
-  useEffect(() => {
-    if (notificationSettings) {
-      setSettings(notificationSettings);
+    if ('Notification' in window) {
+      setPermissionStatus(Notification.permission);
+    } else {
+      setPermissionStatus('denied');
     }
-    checkPermissionStatus();
-  }, [notificationSettings, checkPermissionStatus]);
+  }, []);
 
+  // Request notification permission
   const handlePermissionRequest = async () => {
-    try {
-      const permission = await requestNotificationPermission();
-      setPermissionStatus(permission);
-      
-      if (permission === 'granted') {
+    if ('Notification' in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        setPermissionStatus(permission);
+        
+        if (permission === 'granted') {
+          setNotification({
+            type: 'success',
+            message: 'Notification permissions granted successfully!'
+          });
+        } else {
+          setNotification({
+            type: 'warning',
+            message: 'Notification permissions denied. Some features may not work properly.'
+          });
+        }
+      } catch (error) {
         setNotification({
-          type: 'success',
-          message: 'Notification permissions granted successfully!'
-        });
-      } else {
-        setNotification({
-          type: 'warning',
-          message: 'Notification permissions denied. Some features may not work properly.'
+          type: 'error',
+          message: 'Failed to request notification permissions'
         });
       }
-    } catch (error) {
-      setNotification({
-        type: 'error',
-        message: 'Failed to request notification permissions'
-      });
     }
   };
+
+  useEffect(() => {
+    // Merge provided preferences with default settings
+    if (preferences && Object.keys(preferences).length > 0) {
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        ...preferences
+      }));
+    }
+    checkPermissionStatus();
+  }, [preferences, checkPermissionStatus]);
 
   const handleSettingChange = (path, value) => {
     setSettings(prev => {
@@ -171,7 +170,9 @@ const NotificationSettings = () => {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-      await updateNotificationSettings(settings);
+      if (onUpdate) {
+        await onUpdate(settings);
+      }
       setNotification({
         type: 'success',
         message: 'Notification settings updated successfully!'
@@ -188,7 +189,12 @@ const NotificationSettings = () => {
 
   const handleTestNotification = async (type) => {
     try {
-      await testNotification(type);
+      if (type === 'push' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('Test Notification', {
+          body: 'This is a test notification from HealthSync!',
+          icon: '/favicon.ico'
+        });
+      }
       setNotification({
         type: 'info',
         message: 'Test notification sent! Check your device.'
@@ -228,33 +234,104 @@ const NotificationSettings = () => {
 
   const renderCategorySettings = () => {
     return Object.entries(settings.categories).map(([categoryKey, category]) => (
-      <div key={categoryKey} className="category-card">
-        <div className="category-header">
-          <div className="category-info">
-            <h4>{categoryKey.replace('_', ' ').toUpperCase()}</h4>
-            <div className="priority-indicator" style={{backgroundColor: getPriorityColor(category.priority)}}>
+      <div key={categoryKey} style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '16px',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        transition: 'all 0.2s ease'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h4 style={{
+              margin: 0,
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#1f2937',
+              textTransform: 'capitalize'
+            }}>
+              {categoryKey.replace('_', ' ')}
+            </h4>
+            <div style={{
+              backgroundColor: getPriorityColor(category.priority),
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: '500',
+              textTransform: 'capitalize'
+            }}>
               {category.priority}
             </div>
           </div>
-          <label className="toggle-switch">
+          <label style={{
+            display: 'inline-block',
+            position: 'relative',
+            width: '48px',
+            height: '24px',
+            cursor: 'pointer'
+          }}>
             <input
               type="checkbox"
               checked={category.enabled}
               onChange={(e) => handleCategoryChange(categoryKey, 'enabled', e.target.checked)}
+              style={{ display: 'none' }}
             />
-            <span className="toggle-slider"></span>
+            <span style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: category.enabled ? '#10b981' : '#d1d5db',
+              transition: '0.3s',
+              borderRadius: '24px'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '""',
+                height: '18px',
+                width: '18px',
+                left: category.enabled ? '27px' : '3px',
+                bottom: '3px',
+                backgroundColor: 'white',
+                transition: '0.3s',
+                borderRadius: '50%'
+              }}></span>
+            </span>
           </label>
         </div>
         
         {category.enabled && (
-          <div className="category-details">
-            <div className="priority-section">
-              <label htmlFor={`priority-${categoryKey}`}>Priority Level:</label>
+          <div style={{ paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                Priority Level:
+              </label>
               <select
-                id={`priority-${categoryKey}`}
                 value={category.priority}
                 onChange={(e) => handleCategoryChange(categoryKey, 'priority', e.target.value)}
-                className="priority-select"
+                style={{
+                  width: '120px',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '14px',
+                  backgroundColor: 'white'
+                }}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -262,17 +339,36 @@ const NotificationSettings = () => {
               </select>
             </div>
             
-            <div className="channels-section">
-              <h5>Notification Channels:</h5>
-              <div className="channel-options">
+            <div>
+              <h5 style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Notification Channels:
+              </h5>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                 {['push', 'email', 'inApp'].map(channel => (
-                  <label key={channel} className="channel-option">
+                  <label key={channel} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#374151'
+                  }}>
                     <input
                       type="checkbox"
                       checked={category.channels.includes(channel)}
                       onChange={() => handleChannelToggle(categoryKey, channel)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#10b981'
+                      }}
                     />
-                    <span className="channel-name">{channel}</span>
+                    <span style={{ textTransform: 'capitalize' }}>{channel}</span>
                   </label>
                 ))}
               </div>
@@ -283,39 +379,167 @@ const NotificationSettings = () => {
     ));
   };
 
-  if (!notificationSettings) {
-    return <LoadingSpinner />;
+  // Mock LoadingSpinner component
+  const LoadingSpinnerComponent = () => (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '40px',
+      fontSize: '18px',
+      color: '#6b7280'
+    }}>
+      <div style={{
+        width: '32px',
+        height: '32px',
+        border: '3px solid #f3f4f6',
+        borderTop: '3px solid #10b981',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginRight: '12px'
+      }}></div>
+      Loading...
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+
+  // Mock NotificationBanner component
+  const NotificationBannerComponent = ({ type, message, onClose }) => {
+    const colors = {
+      success: { bg: '#dcfce7', border: '#16a34a', text: '#15803d' },
+      error: { bg: '#fef2f2', border: '#dc2626', text: '#dc2626' },
+      warning: { bg: '#fefce8', border: '#ca8a04', text: '#a16207' },
+      info: { bg: '#eff6ff', border: '#2563eb', text: '#1d4ed8' }
+    };
+
+    return (
+      <div style={{
+        backgroundColor: colors[type].bg,
+        border: `1px solid ${colors[type].border}`,
+        color: colors[type].text,
+        padding: '12px 16px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <span>{message}</span>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: colors[type].text,
+            cursor: 'pointer',
+            fontSize: '18px',
+            padding: '0 4px'
+          }}
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
+
+  if (loading && !settings) {
+    return <LoadingSpinnerComponent />;
   }
 
   return (
-    <div className="notification-settings">
+    <div style={{
+      maxWidth: '800px',
+      margin: '0 auto',
+      padding: '20px',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+    }}>
       {notification && (
-        <NotificationBanner
+        <NotificationBannerComponent
           type={notification.type}
           message={notification.message}
           onClose={() => setNotification(null)}
         />
       )}
 
-      <div className="settings-header">
-        <h2>Notification Settings</h2>
-        <p>Customize how and when you receive health insights and alerts</p>
+      <div style={{ marginBottom: '32px' }}>
+        <h2 style={{
+          fontSize: '28px',
+          fontWeight: '700',
+          color: '#1f2937',
+          marginBottom: '8px'
+        }}>
+          Notification Settings
+        </h2>
+        <p style={{
+          color: '#6b7280',
+          fontSize: '16px',
+          margin: 0
+        }}>
+          Customize how and when you receive health insights and alerts
+        </p>
       </div>
 
       {/* Permission Status */}
-      <div className="permission-section">
-        <div className="permission-card">
-          <div className="permission-info">
-            <h3>Browser Permissions</h3>
-            <div className="permission-status">
-              <span className="permission-icon">{getPermissionIcon(permissionStatus)}</span>
-              <span className="permission-text">{getPermissionText(permissionStatus)}</span>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1f2937',
+              margin: 0,
+              marginBottom: '4px'
+            }}>
+              Browser Permissions
+            </h3>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '18px' }}>
+                {getPermissionIcon(permissionStatus)}
+              </span>
+              <span style={{
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
+                {getPermissionText(permissionStatus)}
+              </span>
             </div>
           </div>
           {permissionStatus !== 'granted' && (
             <button 
-              className="permission-btn"
               onClick={handlePermissionRequest}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
             >
               Enable Notifications
             </button>
@@ -324,401 +548,194 @@ const NotificationSettings = () => {
       </div>
 
       {/* Master Toggle */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>Master Settings</h3>
-          <label className="toggle-switch">
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#1f2937',
+            margin: 0
+          }}>
+            Master Settings
+          </h3>
+          <label style={{
+            display: 'inline-block',
+            position: 'relative',
+            width: '48px',
+            height: '24px',
+            cursor: 'pointer'
+          }}>
             <input
               type="checkbox"
               checked={settings.enabled}
               onChange={(e) => handleSettingChange('enabled', e.target.checked)}
+              style={{ display: 'none' }}
             />
-            <span className="toggle-slider"></span>
+            <span style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: settings.enabled ? '#10b981' : '#d1d5db',
+              transition: '0.3s',
+              borderRadius: '24px'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '""',
+                height: '18px',
+                width: '18px',
+                left: settings.enabled ? '27px' : '3px',
+                bottom: '3px',
+                backgroundColor: 'white',
+                transition: '0.3s',
+                borderRadius: '50%'
+              }}></span>
+            </span>
           </label>
-        </div>
-      </div>
-
-      {/* Push Notifications */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>📱 Push Notifications</h3>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.push?.enabled}
-              onChange={(e) => handleSettingChange('push.enabled', e.target.checked)}
-              disabled={!settings.enabled}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
-
-        {settings.push?.enabled && (
-          <div className="subsettings">
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Health Alerts</h4>
-                <p>Critical health insights and anomalies</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.push?.alerts}
-                  onChange={(e) => handleSettingChange('push.alerts', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Daily Insights</h4>
-                <p>Personalized health insights and trends</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.push?.insights}
-                  onChange={(e) => handleSettingChange('push.insights', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Goal Progress</h4>
-                <p>Updates on your health goals and achievements</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.push?.goals}
-                  onChange={(e) => handleSettingChange('push.goals', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Reminders</h4>
-                <p>Medication, exercise, and health check reminders</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.push?.reminders}
-                  onChange={(e) => handleSettingChange('push.reminders', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Social Updates</h4>
-                <p>Updates from health community and challenges</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.push?.social}
-                  onChange={(e) => handleSettingChange('push.social', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="test-section">
-              <button 
-                className="test-btn"
-                onClick={() => handleTestNotification('push')}
-              >
-                📱 Send Test Notification
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Email Notifications */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>📧 Email Notifications</h3>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.email?.enabled}
-              onChange={(e) => handleSettingChange('email.enabled', e.target.checked)}
-              disabled={!settings.enabled}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
-
-        {settings.email?.enabled && (
-          <div className="subsettings">
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Weekly Summary</h4>
-                <p>Weekly health summary with insights and trends</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.email?.weekly_summary}
-                  onChange={(e) => handleSettingChange('email.weekly_summary', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Monthly Report</h4>
-                <p>Comprehensive monthly health report</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.email?.monthly_report}
-                  onChange={(e) => handleSettingChange('email.monthly_report', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Goal Achievements</h4>
-                <p>Celebrate when you reach important milestones</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.email?.goal_achievements}
-                  onChange={(e) => handleSettingChange('email.goal_achievements', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Health Alerts</h4>
-                <p>Important health alerts and recommendations</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.email?.health_alerts}
-                  onChange={(e) => handleSettingChange('email.health_alerts', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Product Updates</h4>
-                <p>New features and product announcements</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.email?.product_updates}
-                  onChange={(e) => handleSettingChange('email.product_updates', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="test-section">
-              <button 
-                className="test-btn"
-                onClick={() => handleTestNotification('email')}
-              >
-                📧 Send Test Email
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* In-App Notifications */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>🔔 In-App Notifications</h3>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={settings.inApp?.enabled}
-              onChange={(e) => handleSettingChange('inApp.enabled', e.target.checked)}
-              disabled={!settings.enabled}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
-
-        {settings.inApp?.enabled && (
-          <div className="subsettings">
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Banner Notifications</h4>
-                <p>Show notification banners within the app</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.inApp?.banner}
-                  onChange={(e) => handleSettingChange('inApp.banner', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Sound Effects</h4>
-                <p>Play sound for in-app notifications</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.inApp?.sound}
-                  onChange={(e) => handleSettingChange('inApp.sound', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-row">
-              <div className="setting-info">
-                <h4>Vibration</h4>
-                <p>Vibrate device for important notifications</p>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.inApp?.vibration}
-                  onChange={(e) => handleSettingChange('inApp.vibration', e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Schedule Settings */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>⏰ Schedule & Timing</h3>
-        </div>
-
-        <div className="subsettings">
-          <div className="setting-row">
-            <div className="setting-info">
-              <h4>Quiet Hours</h4>
-              <p>Disable notifications during specified hours</p>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.schedule?.quietHours?.enabled}
-                onChange={(e) => handleSettingChange('schedule.quietHours.enabled', e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-
-          {settings.schedule?.quietHours?.enabled && (
-            <div className="time-settings">
-              <div className="time-input-group">
-                <label htmlFor="quiet-start">Start Time:</label>
-                <input
-                  id="quiet-start"
-                  type="time"
-                  value={settings.schedule?.quietHours?.start}
-                  onChange={(e) => handleSettingChange('schedule.quietHours.start', e.target.value)}
-                />
-              </div>
-              <div className="time-input-group">
-                <label htmlFor="quiet-end">End Time:</label>
-                <input
-                  id="quiet-end"
-                  type="time"
-                  value={settings.schedule?.quietHours?.end}
-                  onChange={(e) => handleSettingChange('schedule.quietHours.end', e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="setting-row">
-            <div className="setting-info">
-              <h4>Weekend Mode</h4>
-              <p>Reduce notification frequency on weekends</p>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.schedule?.weekend_mode}
-                onChange={(e) => handleSettingChange('schedule.weekend_mode', e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div className="timezone-setting">
-            <label htmlFor="timezone">Timezone:</label>
-            <select
-              id="timezone"
-              value={settings.schedule?.timezone}
-              onChange={(e) => handleSettingChange('schedule.timezone', e.target.value)}
-              className="timezone-select"
-            >
-              <option value="auto">Auto-detect</option>
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">Eastern Time</option>
-              <option value="America/Chicago">Central Time</option>
-              <option value="America/Denver">Mountain Time</option>
-              <option value="America/Los_Angeles">Pacific Time</option>
-              <option value="Europe/London">London</option>
-              <option value="Europe/Paris">Paris</option>
-              <option value="Asia/Tokyo">Tokyo</option>
-              <option value="Asia/Shanghai">Shanghai</option>
-              <option value="Asia/Kolkata">India</option>
-            </select>
-          </div>
         </div>
       </div>
 
       {/* Advanced Category Settings */}
-      <div className="settings-section">
-        <div className="section-header">
-          <h3>🎯 Advanced Category Settings</h3>
-        </div>
-        <div className="categories-grid">
-          {renderCategorySettings()}
+      <div style={{ marginBottom: '32px' }}>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: '#1f2937',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          🎯 Advanced Category Settings
+        </h3>
+        {renderCategorySettings()}
+      </div>
+
+      {/* Test Section */}
+      <div style={{
+        backgroundColor: '#f8fafc',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1f2937',
+          marginBottom: '12px'
+        }}>
+          Test Notifications
+        </h3>
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <button 
+            onClick={() => handleTestNotification('push')}
+            style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+          >
+            📱 Send Test Push
+          </button>
+          <button 
+            onClick={() => handleTestNotification('email')}
+            style={{
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#7c3aed'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#8b5cf6'}
+          >
+            📧 Send Test Email
+          </button>
         </div>
       </div>
 
       {/* Save Button */}
-      <div className="settings-actions">
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        justifyContent: 'flex-end'
+      }}>
         <button 
-          className={`save-btn ${loading ? 'loading' : ''}`}
-          onClick={handleSaveSettings}
-          disabled={loading}
-        >
-          {loading ? 'Saving...' : 'Save Settings'}
-        </button>
-        <button 
-          className="reset-btn"
-          onClick={() => setSettings(notificationSettings)}
+          onClick={() => setSettings(preferences)}
+          style={{
+            backgroundColor: '#6b7280',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#4b5563'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#6b7280'}
         >
           Reset to Defaults
+        </button>
+        <button 
+          onClick={handleSaveSettings}
+          disabled={loading}
+          style={{
+            backgroundColor: loading ? '#9ca3af' : '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            if (!loading) e.target.style.backgroundColor = '#059669'
+          }}
+          onMouseOut={(e) => {
+            if (!loading) e.target.style.backgroundColor = '#10b981'
+          }}
+        >
+          {loading ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
     </div>

@@ -7,6 +7,7 @@ import NotificationSettings from '../components/profile/NotificationSettings';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { api } from '../services/api';
 import '../styles/components.css';
+import '../styles/profile.css';
 
 const Profile = () => {
   const { user, updateUser } = useContext(AuthContext);
@@ -31,10 +32,34 @@ const Profile = () => {
   const [notificationPrefs, setNotificationPrefs] = useState({});
 
   const tabs = [
-    { id: 'profile', label: 'Personal Info', icon: '👤' },
-    { id: 'goals', label: 'Health Goals', icon: '🎯' },
-    { id: 'data', label: 'Data Sources', icon: '📱' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' }
+    { 
+      id: 'profile', 
+      label: 'Personal Info', 
+      icon: '👤',
+      description: 'Manage your personal details and health profile',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    },
+    { 
+      id: 'goals', 
+      label: 'Health Goals', 
+      icon: '🎯',
+      description: 'Set and track your wellness objectives',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+    },
+    { 
+      id: 'data', 
+      label: 'Data Sources', 
+      icon: '📱',
+      description: 'Connect devices and manage data sources',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    },
+    { 
+      id: 'notifications', 
+      label: 'Notifications', 
+      icon: '🔔',
+      description: 'Customize your notification preferences',
+      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+    }
   ];
 
   const loadDefaultData = useCallback(() => {
@@ -224,181 +249,370 @@ const Profile = () => {
 
   return (
     <div className="profile-page">
-      <div className="page-header">
-        <div className="header-content">
-          <h1>Profile Settings</h1>
-          <p>Manage your personal information, health goals, and preferences</p>
+      {/* Hero Header Section */}
+      <div className="profile-hero">
+        <div className="hero-background">
+          <div className="hero-particles">
+            {[...Array(20)].map((_, i) => (
+              <div 
+                key={i} 
+                className="particle" 
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 10}s`,
+                  animationDuration: `${10 + Math.random() * 20}s`
+                }}
+              />
+            ))}
+          </div>
+          <div className="hero-content">
+            <div className="hero-avatar">
+              <img 
+                src={user?.avatar || '/default-avatar.png'} 
+                alt="Profile"
+                className="avatar-image"
+              />
+              <div className="avatar-status online"></div>
+            </div>
+            <div className="hero-info">
+              <h1 className="hero-title">
+                Welcome back, {user?.firstName || profileData.firstName || 'Health Champion'}! 👋
+              </h1>
+              <p className="hero-subtitle">
+                Your wellness journey continues here. Manage your profile, goals, and preferences.
+              </p>
+              <div className="hero-stats">
+                <div className="stat-item">
+                  <span className="stat-number">156</span>
+                  <span className="stat-label">Insights Generated</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">12</span>
+                  <span className="stat-label">Goals Achieved</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">2.8K</span>
+                  <span className="stat-label">Data Points</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
+        {/* Save Status Notification */}
         {saveStatus && (
-          <div className={`save-status ${saveStatus}`}>
-            {saveStatus === 'saving' && '💾 Saving...'}
-            {saveStatus === 'success' && '✅ Saved successfully!'}
-            {saveStatus === 'error' && '❌ Save failed. Please try again.'}
+          <div className={`save-notification ${saveStatus} animate-slide-in`}>
+            <div className="save-content">
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="save-spinner"></div>
+                  <span>Saving changes...</span>
+                </>
+              )}
+              {saveStatus === 'success' && (
+                <>
+                  <div className="save-icon success">✅</div>
+                  <span>Changes saved successfully!</span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <div className="save-icon error">❌</div>
+                  <span>Save failed. Please try again.</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Tab Navigation */}
+      {/* Enhanced Tab Navigation */}
       <div className="tab-navigation">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="tab-icon">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+        <div className="nav-container">
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                '--tab-gradient': tab.gradient,
+                '--animation-delay': `${index * 0.1}s`
+              }}
+            >
+              <div className="tab-content">
+                <span className="tab-icon">{tab.icon}</span>
+                <div className="tab-text">
+                  <span className="tab-label">{tab.label}</span>
+                  <span className="tab-description">{tab.description}</span>
+                </div>
+              </div>
+              <div className="tab-indicator"></div>
+            </button>
+          ))}
+        </div>
+        <div className="nav-glow"></div>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content with Enhanced Styling */}
       <div className="tab-content">
-        {activeTab === 'profile' && (
-          <div className="profile-tab">
-            <div className="section-header">
-              <h2>Personal Information</h2>
-              <p>Keep your profile information up to date for personalized insights</p>
-            </div>
-            
-            <UserProfile
-              profileData={profileData}
-              onSave={handleProfileSave}
-              loading={loading}
-            />
-
-            <div className="profile-stats">
-              <div className="stat-card">
-                <h3>Account Created</h3>
-                <p>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Data Points Collected</h3>
-                <p>2,847</p>
-              </div>
-              <div className="stat-card">
-                <h3>Insights Generated</h3>
-                <p>156</p>
-              </div>
-              <div className="stat-card">
-                <h3>Goals Achieved</h3>
-                <p>12</p>
-              </div>
-            </div>
-
-            <div className="danger-zone">
-              <h3>Data Management</h3>
-              <div className="danger-actions">
-                <button onClick={exportUserData} className="btn btn-outline">
-                  📥 Export My Data
-                </button>
-                <button onClick={handleAccountDelete} className="btn btn-danger">
-                  🗑️ Delete Account
-                </button>
-              </div>
-              <p className="danger-note">
-                Export your data anytime. Account deletion is permanent and cannot be undone.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'goals' && (
-          <div className="goals-tab">
-            <div className="section-header">
-              <h2>Health Goals</h2>
-              <p>Set and track your health objectives for better motivation</p>
-            </div>
-            
-            <HealthGoals
-              goals={healthGoals}
-              onUpdate={handleGoalUpdate}
-            />
-          </div>
-        )}
-
-        {activeTab === 'data' && (
-          <div className="data-tab">
-            <div className="section-header">
-              <h2>Data Sources</h2>
-              <p>Connect your devices and apps to sync health data automatically</p>
-            </div>
-            
-            <DataSources
-              connectedDevices={connectedDevices}
-              onUpdate={handleDeviceUpdate}
-            />
-
-            <div className="data-privacy">
-              <h3>Data Privacy & Security</h3>
-              <div className="privacy-info">
-                <div className="privacy-item">
-                  <span className="privacy-icon">🔐</span>
-                  <div>
-                    <h4>Encrypted Storage</h4>
-                    <p>All your health data is encrypted using industry-standard AES-256 encryption</p>
-                  </div>
+        <div className={`content-container ${activeTab}`}>
+          {activeTab === 'profile' && (
+            <div className="profile-tab">
+              <div className="section-header">
+                <div className="header-content">
+                  <h2>Personal Information</h2>
+                  <p>Keep your profile information up to date for personalized insights</p>
                 </div>
-                <div className="privacy-item">
-                  <span className="privacy-icon">🚫</span>
-                  <div>
-                    <h4>No Data Selling</h4>
-                    <p>We never sell or share your personal health information with third parties</p>
-                  </div>
+                <div className="header-actions">
+                  <button className="btn btn-outline">
+                    <span>📊</span>
+                    View Health Report
+                  </button>
                 </div>
-                <div className="privacy-item">
-                  <span className="privacy-icon">👤</span>
-                  <div>
-                    <h4>Your Data, Your Control</h4>
-                    <p>You can export or delete your data at any time</p>
+              </div>
+              
+              <UserProfile
+                profileData={profileData}
+                onSave={handleProfileSave}
+                loading={loading}
+              />
+
+              <div className="profile-insights">
+                <h3>Your Health Journey</h3>
+                <div className="insights-grid">
+                  <div className="insight-card">
+                    <div className="insight-icon">📅</div>
+                    <div className="insight-content">
+                      <h4>Account Created</h4>
+                      <p>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Welcome to HealthSync!'}</p>
+                    </div>
+                  </div>
+                  <div className="insight-card">
+                    <div className="insight-icon">💾</div>
+                    <div className="insight-content">
+                      <h4>Data Points Collected</h4>
+                      <p>2,847 health metrics tracked</p>
+                    </div>
+                  </div>
+                  <div className="insight-card">
+                    <div className="insight-icon">💡</div>
+                    <div className="insight-content">
+                      <h4>AI Insights Generated</h4>
+                      <p>156 personalized recommendations</p>
+                    </div>
+                  </div>
+                  <div className="insight-card">
+                    <div className="insight-icon">🏆</div>
+                    <div className="insight-content">
+                      <h4>Goals Achieved</h4>
+                      <p>12 milestones reached this year</p>
+                    </div>
+                  </div>
+                  <div className="insight-card">
+                    <div className="insight-icon">📈</div>
+                    <div className="insight-content">
+                      <h4>Health Score</h4>
+                      <p>82/100 - Keep up the great work!</p>
+                    </div>
+                  </div>
+                  <div className="insight-card">
+                    <div className="insight-icon">⏱️</div>
+                    <div className="insight-content">
+                      <h4>Streak</h4>
+                      <p>45 days of consistent tracking</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'notifications' && (
-          <div className="notifications-tab">
-            <div className="section-header">
-              <h2>Notification Preferences</h2>
-              <p>Choose how and when you want to receive updates about your health</p>
-            </div>
-            
-            <NotificationSettings
-              preferences={notificationPrefs}
-              onUpdate={handleNotificationUpdate}
-            />
-
-            <div className="notification-preview">
-              <h3>Notification Examples</h3>
-              <div className="example-notifications">
-                <div className="notification-example">
-                  <div className="notification-type">Daily Insight</div>
-                  <div className="notification-content">
-                    <h4>🌟 Great sleep quality last night!</h4>
-                    <p>You got 8.2 hours of quality sleep. Your REM sleep was 23% above average.</p>
+              <div className="data-management-section">
+                <div className="section-header">
+                  <h3>Data Management & Privacy</h3>
+                  <p>Take control of your health data with our security-first approach</p>
+                </div>
+                
+                <div className="privacy-features">
+                  <div className="feature-card">
+                    <div className="feature-icon">🔐</div>
+                    <div className="feature-content">
+                      <h4>End-to-End Encryption</h4>
+                      <p>Your health data is protected with military-grade AES-256 encryption</p>
+                    </div>
+                    <div className="feature-status active">Active</div>
+                  </div>
+                  <div className="feature-card">
+                    <div className="feature-icon">🚫</div>
+                    <div className="feature-content">
+                      <h4>Zero Data Selling</h4>
+                      <p>We never sell, share, or monetize your personal health information</p>
+                    </div>
+                    <div className="feature-status active">Guaranteed</div>
+                  </div>
+                  <div className="feature-card">
+                    <div className="feature-icon">👤</div>
+                    <div className="feature-content">
+                      <h4>Full Data Ownership</h4>
+                      <p>Export or delete your data anytime with complete transparency</p>
+                    </div>
+                    <div className="feature-status active">Available</div>
                   </div>
                 </div>
-                <div className="notification-example">
-                  <div className="notification-type">Goal Reminder</div>
-                  <div className="notification-content">
-                    <h4>🎯 You're 2,500 steps away from your daily goal</h4>
-                    <p>A 25-minute walk could help you reach your 10,000 step target!</p>
-                  </div>
+
+                <div className="data-actions">
+                  <button onClick={exportUserData} className="btn btn-primary">
+                    <span>📥</span>
+                    Export My Data
+                  </button>
+                  <button onClick={handleAccountDelete} className="btn btn-danger">
+                    <span>🗑️</span>
+                    Delete Account
+                  </button>
                 </div>
-                <div className="notification-example">
-                  <div className="notification-type">Health Alert</div>
-                  <div className="notification-content">
-                    <h4>⚠️ Unusual heart rate pattern detected</h4>
-                    <p>Your resting heart rate has been elevated for 3 days. Consider consulting a healthcare provider.</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'goals' && (
+            <div className="goals-tab">
+              <div className="section-header">
+                <div className="header-content">
+                  <h2>Health Goals</h2>
+                  <p>Set ambitious targets and track your wellness journey with precision</p>
+                </div>
+                <div className="header-actions">
+                  <button className="btn btn-outline">
+                    <span>📊</span>
+                    Progress Report
+                  </button>
+                </div>
+              </div>
+              
+              <HealthGoals
+                goals={healthGoals}
+                onUpdate={handleGoalUpdate}
+              />
+              
+              <div className="goals-motivation">
+                <div className="motivation-card">
+                  <div className="motivation-content">
+                    <h3>🎯 Stay Motivated!</h3>
+                    <p>"The groundwork for all happiness is good health." - Leigh Hunt</p>
+                    <div className="motivation-stats">
+                      <div className="stat">
+                        <span className="stat-value">87%</span>
+                        <span className="stat-label">Success Rate</span>
+                      </div>
+                      <div className="stat">
+                        <span className="stat-value">15</span>
+                        <span className="stat-label">Days Streak</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="motivation-visual">
+                    <div className="progress-ring">
+                      <div className="ring-progress" style={{strokeDasharray: '283 400'}}></div>
+                      <div className="ring-center">71%</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {activeTab === 'data' && (
+            <div className="data-tab">
+              <div className="section-header">
+                <div className="header-content">
+                  <h2>Data Sources</h2>
+                  <p>Connect your favorite devices and apps for comprehensive health tracking</p>
+                </div>
+                <div className="header-actions">
+                  <button className="btn btn-primary">
+                    <span>➕</span>
+                    Add Device
+                  </button>
+                </div>
+              </div>
+              
+              <DataSources
+                connectedDevices={connectedDevices}
+                onUpdate={handleDeviceUpdate}
+              />
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="notifications-tab">
+              <div className="section-header">
+                <div className="header-content">
+                  <h2>Notification Preferences</h2>
+                  <p>Customize how and when you receive important health updates and insights</p>
+                </div>
+                <div className="header-actions">
+                  <button className="btn btn-outline">
+                    <span>🧪</span>
+                    Test Notifications
+                  </button>
+                </div>
+              </div>
+              
+              <NotificationSettings
+                preferences={notificationPrefs}
+                onUpdate={handleNotificationUpdate}
+              />
+
+              <div className="notification-preview-enhanced">
+                <h3>Notification Examples</h3>
+                <p>Here's how your notifications will look across different channels</p>
+                <div className="preview-grid">
+                  <div className="preview-card push">
+                    <div className="preview-header">
+                      <span className="preview-type">📱 Push Notification</span>
+                      <span className="preview-time">2 min ago</span>
+                    </div>
+                    <div className="preview-content">
+                      <h4>🌟 Excellent sleep quality detected!</h4>
+                      <p>You achieved 8.2 hours of deep, restorative sleep. Your recovery score is 94/100.</p>
+                    </div>
+                  </div>
+                  <div className="preview-card email">
+                    <div className="preview-header">
+                      <span className="preview-type">📧 Email Digest</span>
+                      <span className="preview-time">Weekly</span>
+                    </div>
+                    <div className="preview-content">
+                      <h4>📊 Your Weekly Health Summary</h4>
+                      <p>Great progress this week! You exceeded your step goal 5 out of 7 days and maintained consistent sleep patterns.</p>
+                    </div>
+                  </div>
+                  <div className="preview-card goal">
+                    <div className="preview-header">
+                      <span className="preview-type">🎯 Goal Achievement</span>
+                      <span className="preview-time">Daily</span>
+                    </div>
+                    <div className="preview-content">
+                      <h4>🏆 10,000 steps milestone reached!</h4>
+                      <p>Congratulations! You've maintained this streak for 15 consecutive days. Keep up the amazing work!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Action Button */}
+      <div className="floating-actions">
+        <button className="fab-main" title="Quick Actions">
+          <span>⚡</span>
+        </button>
+        <div className="fab-menu">
+          <button className="fab-item" title="Add Data">📊</button>
+          <button className="fab-item" title="Quick Goal">🎯</button>
+          <button className="fab-item" title="Sync Devices">📱</button>
+          <button className="fab-item" title="Export Data">📥</button>
+        </div>
       </div>
     </div>
   );

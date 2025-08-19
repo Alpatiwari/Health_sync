@@ -1,25 +1,84 @@
-/* Global styles and CSS reset */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* src/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    
+    /* Your existing variables */
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --accent-primary: #7c3aed;
+    --accent-secondary: #6366f1;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --border-color: #334155;
+    --card-bg: #1e293b;
+    --card-hover: #334155;
+  }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
-  color: #111827;
-  line-height: 1.6;
+/* Rest of your existing CSS */
+
+/* Your custom styles */
+@layer components {
+  .dark-theme {
+    @apply bg-[var(--bg-primary)] text-[var(--text-primary)];
+  }
+
+  .app-container {
+    @apply flex flex-col min-h-screen;
+  }
+
+  .main-content {
+    @apply flex flex-1;
+  }
+
+  .content-area {
+    @apply flex-1 p-8 overflow-y-auto;
+  }
+
+  .loading-overlay {
+    @apply fixed inset-0 bg-[rgba(15,23,42,0.8)] flex items-center justify-center z-[9999];
+  }
+
+  .spinner {
+    @apply border-4 border-solid border-[rgba(255,255,255,0.1)] rounded-full border-t-[var(--accent-primary)] w-10 h-10 animate-spin;
+  }
+
+  .spinner-lg {
+    @apply w-16 h-16 border-[6px];
+  }
 }
 
-#root {
-  min-height: 100vh;
+/* Scrollbar styles (can't be Tailwindified) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.App {
-  min-height: 100vh;
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
